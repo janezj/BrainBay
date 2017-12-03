@@ -25,6 +25,48 @@ GNU General Public License for more details.
 #include "ob_evaluator_exprtk.h"
 #include <string>
 
+
+static std::string global_prefix("g_");
+static std::string local_prefix("l_");
+static std::map<std::string, float> globals;
+
+static float* get_var(std::map<std::string, float>& table, const std::string& name) {
+	auto search = table.find(name);
+	if (search == table.end()) {
+		table[name]=0;
+		search = table.find(name);
+	}
+	return &(search->second);
+}
+
+struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
+{
+  std::map<std::string, float>* locals;   
+
+  Resolver(std::map<std::string, float>* locals) { this->locals = locals; }
+
+  virtual bool process(const std::string& unknown_symbol,
+                        exprtk::symbol_table<float>&      symbol_table,
+                        std::string&        error_message)
+   {
+	  if (unknown_symbol.compare(0, global_prefix.size(), global_prefix))
+      {
+		  float* var = get_var(globals, unknown_symbol);
+		  bool ok = symbol_table.create_variable(unknown_symbol, *var);
+		  return ok;
+      }
+	  if (unknown_symbol.compare(0, local_prefix.size(), local_prefix))
+      {
+		  float* var = get_var(*locals, unknown_symbol);
+		  bool ok = symbol_table.create_variable(unknown_symbol, *var);
+		  return ok;
+      }
+
+      error_message = "Unknown symbol...";
+      return false;
+   }
+};
+
 const int MAXEXPRLENGTH = 2560;
 const int NUMINPUTS = 6;
 
@@ -39,6 +81,8 @@ class EVALEXPRTKOBJ : public BASE_CL
 	exprtk::expression<float> exp;
 
 	void setExpression(const char* str);
+	std::map<std::string, float> locals;
+	Resolver resolver;
 public:
 	EVALEXPRTKOBJ(int num);
 	void update_inports();
@@ -59,7 +103,7 @@ void createEvaluatorExprtk(int global_num_objects, BASE_CL** actobject)
 	(*actobject)->object_size=sizeof(EVALEXPRTKOBJ);
 }
 
-EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL()
+EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 {
 	valid = false;
 
@@ -76,11 +120,13 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL()
 	}
 
 	strcpy(out_ports[0].out_name,"out");
+	symbol_table.add_constant("INVALID_VALUE", INVALID_VALUE);
 	symbol_table.add_constants();
 
 	exp.register_symbol_table(symbol_table);
 
 	exprtk::parser<float> parser;
+	parser.enable_unknown_symbol_resolver(resolver);
 
 	setExpression("A");
 }
@@ -134,9 +180,8 @@ void EVALEXPRTKOBJ::save(HANDLE hFile)
 
 void EVALEXPRTKOBJ::incoming_data(int port, float value)
 {
-	if (value!=INVALID_VALUE) {
-		input[port] = value;
-	}
+	// value could be invalid value, the main reason: expression must be responsible, to do the logic
+	input[port] = value;
 }
 
 void EVALEXPRTKOBJ::setExpression(const char *str)
