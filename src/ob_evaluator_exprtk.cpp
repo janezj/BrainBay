@@ -24,7 +24,7 @@ GNU General Public License for more details.
 #include "brainBay.h"
 #include "ob_evaluator_exprtk.h"
 #include <string>
-
+#include <stdarg.h>  
 
 static std::string global_prefix("g_");
 static std::string local_prefix("l_");
@@ -43,19 +43,19 @@ struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
 {
   std::map<std::string, float>* locals;   
 
-  Resolver(std::map<std::string, float>* locals) { this->locals = locals; }
-
+  Resolver(std::map<std::string, float>* locals) { this->locals = locals; mode = e_usrmode_extended; }
+  
   virtual bool process(const std::string& unknown_symbol,
                         exprtk::symbol_table<float>&      symbol_table,
                         std::string&        error_message)
    {
-	  if (unknown_symbol.compare(0, global_prefix.size(), global_prefix))
+	  if (!unknown_symbol.compare(0, global_prefix.size(), global_prefix))
       {
 		  float* var = get_var(globals, unknown_symbol);
-		  bool ok = symbol_table.create_variable(unknown_symbol, *var);
+		  bool ok = symbol_table.add_variable(unknown_symbol, *var);
 		  return ok;
       }
-	  if (unknown_symbol.compare(0, local_prefix.size(), local_prefix))
+	  if (!unknown_symbol.compare(0, local_prefix.size(), local_prefix))
       {
 		  float* var = get_var(*locals, unknown_symbol);
 		  bool ok = symbol_table.create_variable(unknown_symbol, *var);
@@ -83,6 +83,7 @@ class EVALEXPRTKOBJ : public BASE_CL
 	void setExpression(const char* str);
 	std::map<std::string, float> locals;
 	Resolver resolver;
+	exprtk::parser<float> parser;
 public:
 	EVALEXPRTKOBJ(int num);
 	void update_inports();
@@ -125,7 +126,6 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 
 	exp.register_symbol_table(symbol_table);
 
-	exprtk::parser<float> parser;
 	parser.enable_unknown_symbol_resolver(resolver);
 
 	setExpression("A");
@@ -161,6 +161,31 @@ static std::string replace(std::string subject, const std::string& search,
     return subject;
 }
 
+	
+
+// https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
+static std::string string_format(const std::string fmt, ...) {
+    int size = ((int)fmt.size()) * 2 + 50;   // Use a rubric appropriate for your code
+    std::string str;
+    va_list ap;
+    while (1) {     // Maximum two passes on a POSIX system...
+        str.resize(size);
+        va_start(ap, fmt);
+        int n = vsnprintf((char *)str.data(), size, fmt.c_str(), ap);
+        va_end(ap);
+        if (n > -1 && n < size) {  // Everything worked
+            str.resize(n);
+            return str;
+        }
+        if (n > -1)  // Needed size returned
+            size = n + 1;   // For null char
+        else
+            size *= 2;      // Guess at a larger size (OS specific)
+    }
+    return str;
+}
+
+
 void EVALEXPRTKOBJ::load(HANDLE hFile) 
 {
 	char expr[MAXEXPRLENGTH];
@@ -180,18 +205,21 @@ void EVALEXPRTKOBJ::save(HANDLE hFile)
 
 void EVALEXPRTKOBJ::incoming_data(int port, float value)
 {
-	// value could be invalid value, the main reason: expression must be responsible, to do the logic
+	// value could be invalid value, the main reason: expression must be responsible, to handle all possible inputs
 	input[port] = value;
 }
 
 void EVALEXPRTKOBJ::setExpression(const char *str)
 {
 	expr_str.assign(str);
-	exprtk::parser<float> parser;
+
 	valid = parser.compile(expr_str, exp);
 
 	if (!valid) {
-		report_error("Unable to parse expression");
+		std::string err = string_format("Error: %s\nExpression: %s\n",
+                   parser.error().c_str(),
+                   expr_str.c_str());
+		report_error((char*)err.c_str());
 	}
 }
 
