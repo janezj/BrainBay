@@ -26,7 +26,6 @@ GNU General Public License for more details.
 #include <string>
 #include <stdarg.h>  
 
-static std::string global_prefix("g_");
 static std::string local_prefix("l_");
 static std::map<std::string, float> globals;
 
@@ -39,6 +38,12 @@ static float* get_var(std::map<std::string, float>& table, const std::string& na
 	return &(search->second);
 }
 
+static void reset(std::map<std::string, float>& table) {
+	for (auto i = table.begin(); i != table.end(); i++) {
+		i->second = 0;
+	}
+}
+
 struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
 {
   std::map<std::string, float>* locals;   
@@ -49,21 +54,17 @@ struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
                         exprtk::symbol_table<float>&      symbol_table,
                         std::string&        error_message)
    {
-	  if (!unknown_symbol.compare(0, global_prefix.size(), global_prefix))
-      {
-		  float* var = get_var(globals, unknown_symbol);
-		  bool ok = symbol_table.add_variable(unknown_symbol, *var);
-		  return ok;
-      }
 	  if (!unknown_symbol.compare(0, local_prefix.size(), local_prefix))
       {
 		  float* var = get_var(*locals, unknown_symbol);
-		  bool ok = symbol_table.create_variable(unknown_symbol, *var);
+		  bool ok = symbol_table.add_variable(unknown_symbol, *var);
 		  return ok;
       }
-
-      error_message = "Unknown symbol...";
-      return false;
+	  else {
+ 		  float* var = get_var(globals, unknown_symbol);
+		  bool ok = symbol_table.add_variable(unknown_symbol, *var);
+		  return ok;
+	  }
    }
 };
 
@@ -92,6 +93,10 @@ public:
 	void save(HANDLE hFile);
 	void incoming_data(int port, float value);
 	void work();
+	void session_reset() { 
+		reset(locals);
+		reset(globals);
+	}
 	friend LRESULT CALLBACK EvalExptkDlgHandler(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 };
 
