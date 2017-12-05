@@ -21,6 +21,7 @@ GNU General Public License for more details.
 #define _SCL_SECURE_NO_WARNINGS
 #include "exprtk.hpp"
 
+
 #include "brainBay.h"
 #include "ob_evaluator_exprtk.h"
 #include <string>
@@ -42,6 +43,14 @@ static void reset(std::map<std::string, float>& table) {
 	for (auto i = table.begin(); i != table.end(); i++) {
 		i->second = 0;
 	}
+}
+
+float rnd() {
+	return ::rand() / (RAND_MAX + 1.0);
+}
+
+float clock_s() {
+	return clock() / CLOCKS_PER_SEC;	
 }
 
 struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
@@ -128,6 +137,8 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 	strcpy(out_ports[0].out_name,"out");
 	symbol_table.add_constant("INVALID_VALUE", INVALID_VALUE);
 	symbol_table.add_constants();
+	symbol_table.add_function("rand", rnd);
+	symbol_table.add_function("clock", clock_s);
 
 	exp.register_symbol_table(symbol_table);
 
@@ -165,7 +176,6 @@ static std::string replace(std::string subject, const std::string& search,
     }
     return subject;
 }
-
 	
 
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
