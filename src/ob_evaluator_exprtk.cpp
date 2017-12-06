@@ -45,11 +45,16 @@ static void reset(std::map<std::string, float>& table) {
 	}
 }
 
-float rnd() {
+static float rnd() {
 	return ::rand() / (RAND_MAX + 1.0);
 }
 
-float clock_s() {
+static float breakpoint() {
+	PostMessage(ghWndStatusbox, WM_COMMAND, IDC_STOPSESSION, 0);
+	return 0;
+}
+
+static float clock_s() {
 	return clock() / CLOCKS_PER_SEC;	
 }
 
@@ -139,6 +144,8 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 	symbol_table.add_constants();
 	symbol_table.add_function("rand", rnd);
 	symbol_table.add_function("clock", clock_s);
+	symbol_table.add_function("breakpoint", breakpoint);
+	
 
 	exp.register_symbol_table(symbol_table);
 
