@@ -50,7 +50,8 @@ static float rnd() {
 }
 
 static float breakpoint() {
-	PostMessage(ghWndStatusbox, WM_COMMAND, IDC_STOPSESSION, 0);
+	SendMessage(ghWndStatusbox, WM_COMMAND, IDC_STOPSESSION, 0);
+	InvalidateRect(0, 0, 0);
 	return 0;
 }
 
