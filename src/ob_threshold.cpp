@@ -395,21 +395,34 @@ LRESULT CALLBACK MeterWndHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 	{	case WM_DESTROY:
 		 break;
 		case WM_KEYDOWN:
-			// printf("keydown: %ld, %ld\n",lParam,wParam);
-		    switch(wParam) {
-				case KEY_UP:
-				  // step=st->gain/50; 
-				  //if (step<1) step=1;
-  				  st->from_input+=1;
-	   			  InvalidateRect(st->displayWnd,NULL,TRUE);
-				break;
-				case KEY_DOWN:
-				  // step=st->gain/50; 
-				  // if (step<1) step=1;
-  				  st->from_input-=1;
-	   			  InvalidateRect(st->displayWnd,NULL,TRUE);
-				break;
+			if (GetKeyState(VK_CONTROL) & 0x8000) { // to_input
+				switch(wParam) {
+					case KEY_UP:
+  					  st->to_input+=1;
+	   				  InvalidateRect(st->displayWnd,NULL,TRUE);
+					break;
+					case KEY_DOWN:
+  					  st->to_input-=1;
+	   				  InvalidateRect(st->displayWnd,NULL,TRUE);
+					break;
 				}
+			}
+			else {
+				switch(wParam) { // from_input
+					case KEY_UP:
+					  // step=st->gain/50; 
+					  //if (step<1) step=1;
+  					  st->from_input+=1;
+	   				  InvalidateRect(st->displayWnd,NULL,TRUE);
+					break;
+					case KEY_DOWN:
+					  // step=st->gain/50; 
+					  // if (step<1) step=1;
+  					  st->from_input-=1;
+	   				  InvalidateRect(st->displayWnd,NULL,TRUE);
+					break;
+				}
+			}
 		break;
 
 		case WM_MOUSEACTIVATE:
