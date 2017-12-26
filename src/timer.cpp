@@ -23,7 +23,90 @@
 #include "brainBay.h"
 #include "neurobit_api\\api.h"
 #include "ob_emotiv.h"
+#include <set>
+#include <map>
+#include <vector>
 
+static std::vector<BASE_CL*> sorted_objects;
+
+/**
+a is subset of b?
+*/
+bool is_subset(std::set<BASE_CL*>& a, std::set<BASE_CL*>& b) {
+	for (auto i = a.begin(); i != a.end(); i++) {
+		if (b.find(*i) == b.end()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void dep_resolve() {
+	// first we have to find nodes without parent, this are the first resolved nodes
+	std::set<BASE_CL*> all;
+
+	std::map<BASE_CL*, std::set<BASE_CL*>> back;
+
+	// copy all nodes to set all and back is filled with ancestors
+	for (int t = 0; t < GLOBAL.objects; t++)  {
+		BASE_CL* o = objects[t];
+		if (o) {
+			all.insert(o);
+			std::set<BASE_CL*> x;
+			for (LINKStruct* act_link=o->out; act_link->to_port!=-1;act_link++) {			
+				x.insert(objects[act_link->to_object]);
+			}
+			back[o] =  x;
+		}
+	}
+
+	std::set<BASE_CL*> s_unresolved;
+	// delete all delependant child objects and insert them into s_unresolved
+	for (int t=0; t<GLOBAL.objects; t++)  {
+	 	 BASE_CL* o = objects[t];
+		 if (o) {			  
+			for (LINKStruct* act_link=o->out; act_link->to_port!=-1;act_link++) {			
+				BASE_CL* child = objects[act_link->to_object];
+				all.erase(child);
+				s_unresolved.insert(child);
+			}
+		 }
+	}
+
+	std::vector<BASE_CL*> resolved(all.begin(), all.end());
+	std::set<BASE_CL*> s_resolved(all);
+
+	// brute force
+	int lastcnt = s_unresolved.size() + 1;
+	while (lastcnt > s_unresolved.size() && s_unresolved.size() > 0) {
+		lastcnt = s_unresolved.size();
+		for (auto i = s_unresolved.begin(); i!= s_unresolved.end(); ) { // increment in the body, because of erasing
+			if (is_subset(back.find(*i)->second, s_resolved)) {
+				BASE_CL* found = *i++;
+				s_unresolved.erase(found);
+				s_resolved.insert(found);
+				resolved.push_back(found);
+			}
+			else {
+				i++;
+			}
+		}
+	}
+
+	sorted_objects.clear();
+	for (auto i = resolved.begin(); i !=  resolved.end(); i++) {
+		sorted_objects.push_back(*i);
+	}
+	if (s_unresolved.size()) {
+		// an error.
+		for (auto i = s_unresolved.begin(); i !=  s_unresolved.end(); i++) {
+			sorted_objects.push_back(*i);
+		}
+	}
+	if (GLOBAL.objects != sorted_objects.size()) {
+		MessageBox(0, "aaaa", "aaa", MB_OK);
+	}
+}
 
 extern TProtocolEngine NdProtocolEngine;
 
@@ -75,10 +158,9 @@ void process_packets(void)
 	}
 	else
 	{
-
-		for (t=0;t<GLOBAL.objects;t++)
-		 if (objects[t]) objects[t]->work();
-		
+		for (auto i  = sorted_objects.begin(); i != sorted_objects.end(); i++) {
+			(*i)->work();
+		}
 	}
 	if (!TIMING.dialog_update) update_statusinfo();
 	
@@ -145,6 +227,13 @@ void start_timer(void)
 {
 	if (TIMING.timerid) stop_timer();
 
+	dep_resolve();
+	/*sorted_objects.clear();
+	for (int t = 0; t < GLOBAL.objects; t++)  {
+		BASE_CL* o = objects[t];
+		sorted_objects.push_back(o);
+	}	
+	*/
 	QueryPerformanceCounter((_LARGE_INTEGER *)&TIMING.timestamp);
 	TIMING.readtimestamp=TIMING.timestamp;
 	TIMING.ppscounter=0;
