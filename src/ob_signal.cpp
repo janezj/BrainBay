@@ -92,7 +92,7 @@ LRESULT CALLBACK SignalDlgHandler( HWND hDlg, UINT message, WPARAM wParam, LPARA
 				break;
 			case IDC_ENABLE_IN:
 				st->enable_in= IsDlgButtonChecked(hDlg, IDC_ENABLE_IN);
-				if (st->enable_in) { st->width=80; st->inports=2; st->height=CON_START+2*CON_HEIGHT+5;}
+				if (st->enable_in) { st->width=80; st->inports=3; st->height=CON_START+3*CON_HEIGHT+5;}
 				else {st->width=50; st->inports=0; st->height=CON_START+CON_HEIGHT+5; }
 				InvalidateRect(ghWndDesign,NULL,TRUE);
 				break;
@@ -189,6 +189,12 @@ SIGNALOBJ::SIGNALOBJ(int num) : BASE_CL()
 	    in_ports[1].in_min=0.0f;
 	    in_ports[1].in_max=360.0f;
 
+		strcpy(in_ports[2].in_name,"amplitude");
+	    strcpy(in_ports[2].in_dim,"none");
+	    in_ports[2].get_range=-1;
+	    strcpy(in_ports[2].in_desc,"Amplitude");
+	    in_ports[2].in_min=0.0f;
+	    in_ports[2].in_max=1000.0f;
 
 		phase=0.0;
 		sigtype=SIG_SINUS;
@@ -207,7 +213,7 @@ SIGNALOBJ::SIGNALOBJ(int num) : BASE_CL()
 		  load_property("noise",P_INT,&noise);
 		  load_property("type",P_INT,&sigtype);
 		  load_property("enable_in",P_INT,&enable_in);
-  		  if (enable_in) { width=80; height=CON_START+2*CON_HEIGHT+5;}
+  		  if (enable_in) { width=80; height=CON_START+3*CON_HEIGHT+5;}
 		  else {width=50; height=CON_START+CON_HEIGHT+5; }
 	  }
 		
@@ -229,6 +235,7 @@ SIGNALOBJ::SIGNALOBJ(int num) : BASE_CL()
 		  {
 		    if (port==0)  frequency=value; 
 		    if (port==1)  phase=value;
+			if (port==2)  gain=value;
 		  }
 	  }
 
