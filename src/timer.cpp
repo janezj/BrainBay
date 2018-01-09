@@ -23,6 +23,7 @@
 #include "brainBay.h"
 #include "neurobit_api\\api.h"
 #include "ob_emotiv.h"
+#include <time.h>
 #include <set>
 #include <map>
 #include <vector>
@@ -106,6 +107,28 @@ void dep_resolve() {
 	if (GLOBAL.objects != sorted_objects.size()) {
 		MessageBox(0, "aaaa", "aaa", MB_OK);
 	}
+	
+	int n = 0;
+	char fn[MAX_PATH];
+	GetTempPath(MAX_PATH, fn);
+	strcat(fn, "/bb-objects.txt");
+	FILE* f = fopen(fn, "wt");
+	{
+		time_t rawtime;
+		struct tm * timeinfo;
+
+		time ( &rawtime );
+		timeinfo = localtime ( &rawtime );
+		fprintf (f, "# %s\n", asctime (timeinfo) );
+	}
+	for ( auto i  = sorted_objects.begin(); i != sorted_objects.end(); i++) {
+			BASE_CL* o  = *i;
+			const char* name = o->tag;
+			const int type = o->type;
+
+			fprintf(f, "%i %i: %s\n", n++, type, name);
+	}
+	fclose(f);
 }
 
 extern TProtocolEngine NdProtocolEngine;
@@ -159,7 +182,9 @@ void process_packets(void)
 	else
 	{
 		for (auto i  = sorted_objects.begin(); i != sorted_objects.end(); i++) {
-			(*i)->work();
+			BASE_CL* o  = *i;
+			const char* name = o->tag;
+			o->work();
 		}
 	}
 	if (!TIMING.dialog_update) update_statusinfo();
