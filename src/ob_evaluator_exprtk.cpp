@@ -142,6 +142,7 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 
 	strcpy(out_ports[0].out_name,"out");
 	symbol_table.add_constant("INVALID_VALUE", INVALID_VALUE);
+	symbol_table.add_constant("PACKETS_PER_SECOND", PACKETSPERSECOND);
 	symbol_table.add_constants();
 	symbol_table.add_function("rand", rnd);
 	symbol_table.add_function("clock", clock_s);
