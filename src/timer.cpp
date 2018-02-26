@@ -28,6 +28,8 @@
 #include <map>
 #include <vector>
 
+#define CCCa
+#if defined(CCC)
 static std::vector<BASE_CL*> sorted_objects;
 
 /**
@@ -130,6 +132,7 @@ void dep_resolve() {
 	}
 	fclose(f);
 }
+#endif
 
 extern TProtocolEngine NdProtocolEngine;
 
@@ -181,11 +184,16 @@ void process_packets(void)
 	}
 	else
 	{
+#if defined(CCC)
 		for (auto i  = sorted_objects.begin(); i != sorted_objects.end(); i++) {
 			BASE_CL* o  = *i;
 			const char* name = o->tag;
 			o->work();
 		}
+#else
+		for (t=0;t<GLOBAL.objects;t++)
+ 		 if (objects[t]) objects[t]->work(); 		
+#endif
 	}
 	if (!TIMING.dialog_update) update_statusinfo();
 	
@@ -251,8 +259,9 @@ void CALLBACK TimerProc(UINT uID,UINT uMsg,DWORD dwUser,DWORD dw1,DWORD dw2)
 void start_timer(void)
 {
 	if (TIMING.timerid) stop_timer();
-
+#if defined(CCC)
 	dep_resolve();
+#endif
 	/*sorted_objects.clear();
 	for (int t = 0; t < GLOBAL.objects; t++)  {
 		BASE_CL* o = objects[t];
