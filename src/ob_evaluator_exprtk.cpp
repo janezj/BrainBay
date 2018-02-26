@@ -30,10 +30,14 @@ GNU General Public License for more details.
 static std::string local_prefix("l_");
 static std::map<std::string, float> globals;
 
-static float* get_var(std::map<std::string, float>& table, const std::string& var_name) {
-	std::string name;
-	name.resize(var_name.size());
-	std::transform(var_name.begin(), var_name.end(), name.begin(), ::tolower);
+static std::string lower(const std::string& x) {
+	std::string s;
+	s.resize(x.size());
+	std::transform(x.begin(), x.end(), s.begin(), ::tolower);
+	return s;
+}
+
+static float* get_var(std::map<std::string, float>& table, const std::string& name) {
 	 
 	auto search = table.find(name);
 	if (search == table.end()) {
@@ -64,16 +68,36 @@ static float clock_s() {
 	return clock() / CLOCKS_PER_SEC;	
 }
 
+
+struct Printer : public exprtk::igeneric_function<float> {	
+	typedef exprtk::igeneric_function<float>::parameter_list_t parameter_list_t;
+	typedef exprtk::igeneric_function<float>::generic_type generic_type;
+	typedef generic_type::string_view string_t;
+	typedef generic_type::scalar_view scalar_t;
+
+    Printer(): exprtk::igeneric_function<float>("ST") {}
+
+    inline float operator()(parameter_list_t params) {
+		string_t _text(params[0]);
+		scalar_t _val(params[1]);
+		std::string text = exprtk::to_str(_text);
+		float val = _val();
+		printf("%s %f\n", text.c_str(), val);
+        return 0;
+    }
+};
+
 struct Resolver : public exprtk::parser<float>::unknown_symbol_resolver
 {
   std::map<std::string, float>* locals;   
 
   Resolver(std::map<std::string, float>* locals) { this->locals = locals; mode = e_usrmode_extended; }
   
-  virtual bool process(const std::string& unknown_symbol,
+  virtual bool process(const std::string& _unknown_symbol,
                         exprtk::symbol_table<float>&      symbol_table,
                         std::string&        error_message)
    {
+	  std::string unknown_symbol = lower(_unknown_symbol);
 	  if (!unknown_symbol.compare(0, local_prefix.size(), local_prefix))
       {
 		  float* var = get_var(*locals, unknown_symbol);
@@ -106,6 +130,8 @@ class EVALEXPRTKOBJ : public BASE_CL
 	Resolver resolver;
 	exprtk::parser<float> parser;
 	HFONT monoFont;
+	Printer printer;
+	float __init__;
 public:
 	EVALEXPRTKOBJ(int num);
 	~EVALEXPRTKOBJ() {
@@ -160,6 +186,8 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 	symbol_table.add_function("rand", rnd);
 	symbol_table.add_function("clock", clock_s);
 	symbol_table.add_function("breakpoint", breakpoint);
+	symbol_table.add_function("print", printer);
+	symbol_table.add_variable("init", __init__);
 	
 
 	exp.register_symbol_table(symbol_table);
@@ -250,16 +278,17 @@ void EVALEXPRTKOBJ::incoming_data(int port, float value)
 
 void EVALEXPRTKOBJ::setExpression(const char *str)
 {
+	__init__ = 1;
 	expr_str.assign(str);
-
 	valid = parser.compile(expr_str, exp);
+	__init__ = 0;
 
 	if (!valid) {
 		std::string err = string_format("Error: %s\nExpression: %s\n",
                    parser.error().c_str(),
                    expr_str.c_str());
 		report_error((char*)err.c_str());
-	}
+	} 
 }
 
 void EVALEXPRTKOBJ::work()
