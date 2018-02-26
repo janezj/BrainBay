@@ -106,10 +106,25 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	MSG msg;
 	hInst=hInstance;
 
-	// conv_file();
+	bool debug = (strstr(lpCmdLine,"-d")) || (strstr(lpCmdLine,"--debug"));
 
-	if ((strstr(lpCmdLine,"-d")) || (strstr(lpCmdLine,"--debug")))
-	{ AllocConsole();	freopen("CONOUT$", "w", stdout); } // open console window for debugging 
+	// find command line specified design
+	char* cmd_design = 0;
+	for (int i = 1; i < __argc; i++) {
+		char* par = __argv[i];
+		int len = strlen(par);
+		if (len < 5) {
+			continue;
+		}
+		if (strcmp(par + len - 4, ".con") == 0) {
+			cmd_design = par;
+		}
+	}
+
+	if (debug) { // open console window for debugging 
+		AllocConsole();	
+		freopen("CONOUT$", "w", stdout); 
+	} 
 
 	printf("commandline:%s\n",lpCmdLine);
 	init_path();
@@ -141,7 +156,11 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	}
 
 
-	if (GLOBAL.startdesign) {
+	if (cmd_design) {
+		printf("opening command line design: %s\n", cmd_design);
+		load_configfile(cmd_design);
+	}
+	else if (GLOBAL.startdesign) {
 		if (strlen(GLOBAL.startdesignpath) > 3)
 		{
 			char configfilename[MAX_PATH];
@@ -154,7 +173,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 			if (load_configfile(configfilename)) 
 			sort_objects();					  
 		}
-	}
+	}		
 	else if (GLOBAL.startup) 
 	{
 		if (!load_configfile(GLOBAL.configfile)) report_error("Could not load Config File");
