@@ -163,6 +163,7 @@ void createEvaluatorExprtk(int global_num_objects, BASE_CL** actobject)
 
 EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 {
+	__init__ = 0;
 	monoFont = NULL;
 
 	valid = false;
@@ -189,10 +190,22 @@ EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 	symbol_table.add_function("print", printer);
 	symbol_table.add_variable("init", __init__);
 	
-
+	
 	exp.register_symbol_table(symbol_table);
 
 	parser.enable_unknown_symbol_resolver(resolver);
+
+	// print variables
+	
+    std::deque<std::string> variable_list;
+    symbol_table.get_variable_list(variable_list);
+
+	printf("Variables:\n");
+    for (std::size_t i = 0; i < variable_list.size(); i++) {
+		std::string v = variable_list[i];
+		float x = symbol_table.get_variable(v)->ref();
+		printf("\t%s: %f\n", v.c_str(), x);
+	}
 
 	setExpression("A");
 }
@@ -278,10 +291,9 @@ void EVALEXPRTKOBJ::incoming_data(int port, float value)
 
 void EVALEXPRTKOBJ::setExpression(const char *str)
 {
-	__init__ = 1;
+	__init__ = 1; // reset __init__ after work
 	expr_str.assign(str);
-	valid = parser.compile(expr_str, exp);
-	__init__ = 0;
+	valid = parser.compile(expr_str, exp);	
 
 	if (!valid) {
 		std::string err = string_format("Error: %s\nExpression: %s\n",
@@ -299,6 +311,7 @@ void EVALEXPRTKOBJ::work()
 		result = *(float*)v[0].data;
 	}
 	pass_values(0, result);
+	__init__ = 0;
 }
 
 LRESULT CALLBACK EvalExptkDlgHandler(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -309,11 +322,15 @@ LRESULT CALLBACK EvalExptkDlgHandler(HWND hDlg, UINT message, WPARAM wParam, LPA
 		return FALSE;
 
 	switch( message ) {
-	case WM_INITDIALOG:
+	case WM_INITDIALOG: {
 		SetDlgItemText(hDlg, IDC_EVALEXPRESSION, st->expr_str.c_str());
 		st->monoFont = CreateFont(0,0,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
-		SendMessage(GetDlgItem(hDlg, IDC_EVALEXPRESSION),WM_SETFONT,(WPARAM)st->monoFont,0);
+		DWORD dist = 16; 
+		SendDlgItemMessage(hDlg, IDC_EVALEXPRESSION, EM_SETTABSTOPS, 1, (LPARAM)&dist);
+		SendDlgItemMessage(hDlg, IDC_EVALEXPRESSION, WM_SETFONT,(WPARAM)st->monoFont,0);
+		InvalidateRect(hDlg, 0, TRUE);
 		return TRUE;
+	    }
 	case WM_CLOSE:
 		EndDialog(hDlg, LOWORD(wParam));
 		return TRUE;
