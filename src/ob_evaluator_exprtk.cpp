@@ -250,6 +250,10 @@ void EVALEXPRTKOBJ::setExpression(const char *str)
 void EVALEXPRTKOBJ::work()
 {
 	float result = valid ? exp.value() : INVALID_VALUE;
+	if (valid && exp.results().count()) {
+		auto v = exp.results();
+		result = *(float*)v[0].data;
+	}
 	pass_values(0, result);
 }
 
