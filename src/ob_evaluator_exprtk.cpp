@@ -30,9 +30,14 @@ GNU General Public License for more details.
 static std::string local_prefix("l_");
 static std::map<std::string, float> globals;
 
-static float* get_var(std::map<std::string, float>& table, const std::string& name) {
+static float* get_var(std::map<std::string, float>& table, const std::string& var_name) {
+	std::string name;
+	name.resize(var_name.size());
+	std::transform(var_name.begin(), var_name.end(), name.begin(), ::tolower);
+	 
 	auto search = table.find(name);
 	if (search == table.end()) {
+		printf("create variable: %s\n", name.c_str());
 		table[name]=0;
 		search = table.find(name);
 	}
