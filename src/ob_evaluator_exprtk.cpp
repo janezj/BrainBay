@@ -100,8 +100,14 @@ class EVALEXPRTKOBJ : public BASE_CL
 	std::map<std::string, float> locals;
 	Resolver resolver;
 	exprtk::parser<float> parser;
+	HFONT monoFont;
 public:
 	EVALEXPRTKOBJ(int num);
+	~EVALEXPRTKOBJ() {
+		if (monoFont != NULL) {
+			DeleteObject(monoFont);
+		}
+	}
 	void update_inports();
 	void make_dialog();
 	void load(HANDLE hFile);
@@ -126,6 +132,8 @@ void createEvaluatorExprtk(int global_num_objects, BASE_CL** actobject)
 
 EVALEXPRTKOBJ::EVALEXPRTKOBJ(int num) : BASE_CL(), resolver(&locals)
 {
+	monoFont = NULL;
+
 	valid = false;
 
 	outports = 1;
@@ -171,6 +179,8 @@ void EVALEXPRTKOBJ::update_inports()
 void EVALEXPRTKOBJ::make_dialog()
 {
 	display_toolbox(hDlg=CreateDialog(hInst, (LPCTSTR)IDD_EVALBOX_ML, ghWndStatusbox, (DLGPROC)EvalExptkDlgHandler));
+	monoFont = CreateFont(0,12,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
+	SendMessage(GetDlgItem(hDlg, IDC_EVALEXPRESSION),WM_SETFONT,(WPARAM)monoFont,0);
 }
 
 static char* prop_name = "expression_exprtk";
@@ -267,6 +277,8 @@ LRESULT CALLBACK EvalExptkDlgHandler(HWND hDlg, UINT message, WPARAM wParam, LPA
 	switch( message ) {
 	case WM_INITDIALOG:
 		SetDlgItemText(hDlg, IDC_EVALEXPRESSION, st->expr_str.c_str());
+		st->monoFont = CreateFont(0,0,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
+		SendMessage(GetDlgItem(hDlg, IDC_EVALEXPRESSION),WM_SETFONT,(WPARAM)st->monoFont,0);
 		return TRUE;
 	case WM_CLOSE:
 		EndDialog(hDlg, LOWORD(wParam));
